@@ -372,7 +372,7 @@ async def cancel_feedback_reply(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-@hr_router.message(F.text == "👥 Користувачі")
+@hr_router.message(F.text == "👥 Співробітники")
 async def show_users(message: Message):
     if not await check_hr_rights(message):
         return
@@ -381,7 +381,7 @@ async def show_users(message: Message):
         await message.answer("🔍 Користувачів не знайдено.")
         return
     prepared = [(u[0], u[1], u[2], u[3]) for u in users]
-    await message.answer("👥 Користувачі:", reply_markup=get_user_list_keyboard(prepared))
+    await message.answer("👥 Співробітники:", reply_markup=get_user_list_keyboard(prepared))
 
 
 @hr_router.message(F.text == "⚙️ Налаштування")
