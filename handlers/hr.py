@@ -70,7 +70,7 @@ async def new_requests(message: Message):
         chat = await message.bot.get_chat(user_id)
         username = chat.username or "—"
         await message.answer(
-            f"🆕 <b>Заявка №{num}</b>\n"
+            f"🆕 <b>Заявка №{req_id}</b>\n"
             f"👤 {full} (@{username})\n"
             f"🏢 {dept} | 💼 {pos}\n"
             f"📂 {cat}\n"
@@ -91,10 +91,9 @@ async def new_requests(message: Message):
 async def comment_request(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     rid = int(callback.data.split("_")[1])
-    user_id, req_number = get_request(rid)
     await state.update_data(request_id=rid)
     await state.set_state(HRState.add_comment)
-    await callback.message.answer(f"✏️ Введіть коментар до заявки №{req_number}:")
+    await callback.message.answer(f"✏️ Введіть коментар до заявки №{rid}:")
 
 
 @hr_router.message(HRState.add_comment)
@@ -189,7 +188,7 @@ async def _render_hr_history(bot, offset: int):
             username = chat.username or "—"
             symbol = "✅" if status == "Схвалено" else "❌" if status == "Відхилено" else ""
             parts.append(
-                f"📌 <b>Заявка №{num}</b>\n"
+                f"📌 <b>Заявка №{_id}</b>\n"
                 f"👤 ПІБ: {full} (@{username})\n"
                 f"🏢 Відділ: {dept}\n"
                 f"💼 Посада: {pos}\n"
@@ -202,7 +201,7 @@ async def _render_hr_history(bot, offset: int):
                 f"📊 Результат: {symbol}{status}"
             )
         else:
-            fid, user_name, fb_text, fb_response, created_fb, responded_at, fb_hr = fields
+            fid, fb_text, fb_response, created_fb, responded_at, fb_hr = fields
             parts.append(
                 f"🥷 <b>Анонімний відгук №{fid}</b>\n"
                 f"📝 {fb_text}\n"
