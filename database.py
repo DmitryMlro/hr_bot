@@ -159,16 +159,15 @@ def delete_user(telegram_id: int) -> None:
         conn.commit()
 
 
-def get_next_request_number(user_id: int) -> int:
+def get_next_request_number() -> int:
     last = sqlite3.connect(DB_NAME).execute(
-        "SELECT MAX(request_number) FROM requests WHERE user_id = ?",
-        (user_id,)
+        "SELECT MAX(request_number) FROM requests"
     ).fetchone()[0]
     return (last or 0) + 1
 
 
 def add_request(user_id: int, category: str, text: str) -> int:
-    number = get_next_request_number(user_id)
+    number = get_next_request_number()
     now = datetime.now().isoformat(timespec="seconds")
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.execute('''
@@ -372,4 +371,3 @@ def get_processed_feedbacks(limit: Optional[int] = 10) -> List[Tuple]:
     rows = cur.fetchall()
     conn.close()
     return rows
-
