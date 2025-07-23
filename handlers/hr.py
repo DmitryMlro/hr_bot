@@ -70,7 +70,7 @@ async def new_requests(message: Message):
         chat = await message.bot.get_chat(user_id)
         username = chat.username or "—"
         await message.answer(
-            f"🆕 <b>Заявка №{req_id}</b>\n"
+            f"🆕 <b>Заявка №{num}</b>\n"
             f"👤 {full} (@{username})\n"
             f"🏢 {dept} | 💼 {pos}\n"
             f"📂 {cat}\n"
@@ -188,7 +188,7 @@ async def _render_hr_history(bot, offset: int):
             username = chat.username or "—"
             symbol = "✅" if status == "Схвалено" else "❌" if status == "Відхилено" else ""
             parts.append(
-                f"📌 <b>Заявка №{_id}</b>\n"
+                f"📌 <b>Заявка №{num}</b>\n"
                 f"👤 ПІБ: {full} (@{username})\n"
                 f"🏢 Відділ: {dept}\n"
                 f"💼 Посада: {pos}\n"
@@ -201,7 +201,7 @@ async def _render_hr_history(bot, offset: int):
                 f"📊 Результат: {symbol}{status}"
             )
         else:
-            fid, fb_text, fb_response, created_fb, responded_at, fb_hr = fields
+            fid, user_name, fb_text, fb_response, created_fb, responded_at, fb_hr = fields
             parts.append(
                 f"🥷 <b>Анонімний відгук №{fid}</b>\n"
                 f"📝 {fb_text}\n"
