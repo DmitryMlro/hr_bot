@@ -333,7 +333,7 @@ def get_processed_requests(limit: Optional[int] = 10) -> List[Tuple]:
         JOIN users u ON r.user_id = u.telegram_id
         LEFT JOIN users hr ON r.assigned_hr_id = hr.telegram_id
         WHERE r.status != 'Відправлено'
-        ORDER BY r.updated_at DESC
+        ORDER BY r.request_number ASC
     '''
     if limit is not None:
         base_sql += ' LIMIT ?'
