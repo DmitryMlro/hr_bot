@@ -212,7 +212,7 @@ def get_user_requests(user_id: int) -> List[Tuple]:
         FROM requests r
         LEFT JOIN users u2 ON r.assigned_hr_id = u2.telegram_id
         WHERE r.user_id = ?
-        ORDER BY r.created_at DESC
+        ORDER BY r.request_number DESC
     ''', (user_id,)).fetchall()
 
 
@@ -333,7 +333,7 @@ def get_processed_requests(limit: Optional[int] = 10) -> List[Tuple]:
         JOIN users u ON r.user_id = u.telegram_id
         LEFT JOIN users hr ON r.assigned_hr_id = hr.telegram_id
         WHERE r.status != 'Відправлено'
-        ORDER BY r.request_number ASC
+        ORDER BY COALESCE(r.updated_at, r.created_at) DESC
     '''
     if limit is not None:
         base_sql += ' LIMIT ?'
