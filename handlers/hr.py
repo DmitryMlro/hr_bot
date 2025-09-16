@@ -192,7 +192,7 @@ async def _render_hr_history(bot, offset: int):
             symbol = "✅" if status == "Схвалено" else "❌" if status == "Відхилено" else ""
             parts.append(
                 f"📌 <b>Заявка №{num}</b>\n"
-                f"{symbol} <b>{status or "В обробці"}</b>\n"
+                f"{symbol} <b>{status or 'В обробці'}</b>\n"
                 f"👤 ПІБ: {full} (@{username})\n"
                 f"🏢 Відділ: {dept}\n"
                 f"💼 Посада: {pos}\n"
@@ -518,3 +518,4 @@ async def update_position(message: Message, state: FSMContext):
         reply_markup=get_hr_main_menu()
     )
     await state.clear()
+
