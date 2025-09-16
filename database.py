@@ -2,12 +2,14 @@ import sqlite3
 from datetime import datetime
 import uuid
 from typing import List, Tuple, Optional
+import os
 
 DB_NAME = "hr_bot.db"
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), DB_NAME)
 
 
 def init_db():
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
 
         c.execute('''
@@ -66,7 +68,7 @@ def init_db():
 
 
 def get_user_role(telegram_id: int) -> Optional[str]:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         row = conn.execute(
             "SELECT role FROM roles WHERE telegram_id = ?",
             (telegram_id,)
@@ -79,7 +81,7 @@ def has_hr_access(telegram_id: int) -> bool:
 
 
 def add_hr(telegram_id: int) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO roles (telegram_id, role) VALUES (?, 'hr')",
             (telegram_id,)
@@ -88,14 +90,14 @@ def add_hr(telegram_id: int) -> None:
 
 
 def get_all_hr_ids() -> List[int]:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         return [r[0] for r in conn.execute(
             "SELECT telegram_id FROM roles WHERE role = 'hr'"
         ).fetchall()]
 
 
 def is_token_valid(token: str) -> bool:
-    row = sqlite3.connect(DB_NAME).execute(
+    row = sqlite3.connect(DB_PATH).execute(
         "SELECT is_used FROM hr_tokens WHERE token = ?",
         (token,)
     ).fetchone()
@@ -103,7 +105,7 @@ def is_token_valid(token: str) -> bool:
 
 
 def mark_token_as_used(token: str) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "UPDATE hr_tokens SET is_used = 1 WHERE token = ?",
             (token,)
@@ -113,14 +115,14 @@ def mark_token_as_used(token: str) -> None:
 
 def generate_hr_token() -> str:
     token = uuid.uuid4().hex[:8]
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute("INSERT INTO hr_tokens (token) VALUES (?)", (token,))
         conn.commit()
     return token
 
 
 def add_user(telegram_id: int, full_name: str, department: str, position: str) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
             INSERT OR REPLACE INTO users
               (telegram_id, full_name, department, position)
@@ -130,20 +132,20 @@ def add_user(telegram_id: int, full_name: str, department: str, position: str) -
 
 
 def get_user(telegram_id: int) -> Optional[Tuple]:
-    return sqlite3.connect(DB_NAME).execute(
+    return sqlite3.connect(DB_PATH).execute(
         "SELECT * FROM users WHERE telegram_id = ?",
         (telegram_id,)
     ).fetchone()
 
 
 def get_all_users() -> List[Tuple[int, str, str, str]]:
-    return sqlite3.connect(DB_NAME).execute(
+    return sqlite3.connect(DB_PATH).execute(
         "SELECT telegram_id, full_name, department, position FROM users"
     ).fetchall()
 
 
 def update_user_info(telegram_id: int, full_name: str, department: str, position: str) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
             UPDATE users
             SET full_name = ?, department = ?, position = ?
@@ -153,14 +155,14 @@ def update_user_info(telegram_id: int, full_name: str, department: str, position
 
 
 def delete_user(telegram_id: int) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
         conn.execute("DELETE FROM roles WHERE telegram_id = ?", (telegram_id,))
         conn.commit()
 
 
 def get_next_request_number() -> int:
-    last = sqlite3.connect(DB_NAME).execute(
+    last = sqlite3.connect(DB_PATH).execute(
         "SELECT MAX(request_number) FROM requests"
     ).fetchone()[0]
     return (last or 0) + 1
@@ -169,7 +171,7 @@ def get_next_request_number() -> int:
 def add_request(user_id: int, category: str, text: str) -> int:
     number = get_next_request_number()
     now = datetime.now().isoformat(timespec="seconds")
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute('''
             INSERT INTO requests
               (user_id, request_number, category, text, status, created_at)
@@ -180,7 +182,7 @@ def add_request(user_id: int, category: str, text: str) -> int:
 
 
 def get_new_requests() -> List[Tuple[int, int, str, str, str, str, str, str]]:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         return conn.execute('''
             SELECT
               r.id,
@@ -199,7 +201,7 @@ def get_new_requests() -> List[Tuple[int, int, str, str, str, str, str, str]]:
 
 
 def get_user_requests(user_id: int) -> List[Tuple]:
-    return sqlite3.connect(DB_NAME).execute('''
+    return sqlite3.connect(DB_PATH).execute('''
         SELECT
           r.request_number,
           r.category,
@@ -218,7 +220,7 @@ def get_user_requests(user_id: int) -> List[Tuple]:
 
 def update_request_status(request_id: int, status: Optional[str] = None, response: Optional[str] = None) -> None:
     now = datetime.now().isoformat(timespec="seconds")
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         if status is not None and response is None:
             conn.execute('''
                 UPDATE requests
@@ -241,7 +243,7 @@ def update_request_status(request_id: int, status: Optional[str] = None, respons
 
 
 def assign_hr_to_request(request_id: int, hr_id: int) -> None:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "UPDATE requests SET assigned_hr_id = ? WHERE id = ?",
             (hr_id, request_id)
@@ -250,14 +252,14 @@ def assign_hr_to_request(request_id: int, hr_id: int) -> None:
 
 
 def get_request(request_id: int) -> Tuple[int, int]:
-    return sqlite3.connect(DB_NAME).execute(
+    return sqlite3.connect(DB_PATH).execute(
         "SELECT user_id, request_number FROM requests WHERE id = ?",
         (request_id,)
     ).fetchone()
 
 
 def get_feedback_user(feedback_id: int) -> Optional[int]:
-    row = sqlite3.connect(DB_NAME).execute(
+    row = sqlite3.connect(DB_PATH).execute(
         "SELECT user_id FROM anonymous_feedback WHERE id = ?",
         (feedback_id,)
     ).fetchone()
@@ -266,7 +268,7 @@ def get_feedback_user(feedback_id: int) -> Optional[int]:
 
 def add_anonymous_feedback(user_id: int, text: str) -> None:
     now = datetime.now().isoformat(timespec="seconds")
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
             INSERT INTO anonymous_feedback
               (user_id, text, created_at)
@@ -276,7 +278,7 @@ def add_anonymous_feedback(user_id: int, text: str) -> None:
 
 
 def get_new_feedback() -> List[Tuple[int, str, str]]:
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         return conn.execute('''
             SELECT id, text, created_at
             FROM anonymous_feedback
@@ -286,7 +288,7 @@ def get_new_feedback() -> List[Tuple[int, str, str]]:
 
 
 def get_user_feedback(user_id: int) -> List[Tuple]:
-    return sqlite3.connect(DB_NAME).execute('''
+    return sqlite3.connect(DB_PATH).execute('''
         SELECT
           af.id,
           af.text,
@@ -303,7 +305,7 @@ def get_user_feedback(user_id: int) -> List[Tuple]:
 
 def add_feedback_response(feedback_id: int, response: str, hr_id: int) -> None:
     now = datetime.now().isoformat(timespec="seconds")
-    with sqlite3.connect(DB_NAME) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
             UPDATE anonymous_feedback
             SET response = ?, responded_at = ?, assigned_hr_id = ?
@@ -313,7 +315,7 @@ def add_feedback_response(feedback_id: int, response: str, hr_id: int) -> None:
 
 
 def get_processed_requests(limit: Optional[int] = 10) -> List[Tuple]:
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     base_sql = '''
         SELECT
@@ -346,7 +348,7 @@ def get_processed_requests(limit: Optional[int] = 10) -> List[Tuple]:
 
 
 def get_processed_feedbacks(limit: Optional[int] = 10) -> List[Tuple]:
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     base_sql = '''
         SELECT
