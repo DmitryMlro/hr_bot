@@ -28,6 +28,8 @@ from database import (
     get_new_feedback
 )
 
+import uuid
+
 user_router = Router()
 PAGE_SIZE = 10
 
@@ -103,16 +105,36 @@ async def category_chosen(message: Message, state: FSMContext):
 
 
 @user_router.message(RequestState.enter_text)
-async def text_entered(message: Message, state: FSMContext):
-    await state.update_data(text=message.text.strip())
+async def text_or_media_entered(message: Message, state: FSMContext):
     data = await state.get_data()
-    await message.answer(
+    media_list = data.get("media", [])
+    text = data.get("text", "")
+
+    if message.text:
+        text = message.text.strip()
+    elif message.caption:
+        text = message.caption.strip()
+
+    if message.photo:
+        media_list.append(("photo", message.photo[-1].file_id))
+    if message.document:
+        media_list.append(("document", message.document.file_id))
+    if message.video:
+        media_list.append(("video", message.video.file_id))
+    if message.voice:
+        media_list.append(("voice", message.voice.file_id))
+
+    await state.update_data(text=text, media=media_list)
+
+    preview_text = (
         f"📄 <b>Перевірте заявку:</b>\n\n"
         f"📂 {data['category']}\n"
-        f"📝 {data['text']}",
-        parse_mode="HTML",
-        reply_markup=get_preview_keyboard()
+        f"📝 {text or '-'}"
     )
+    if media_list:
+        preview_text += f"\n\n📎 Додано файлів: {len(media_list)}"
+
+    await message.answer(preview_text, parse_mode="HTML", reply_markup=get_preview_keyboard())
     await state.set_state(RequestState.confirm)
 
 
@@ -120,7 +142,8 @@ async def text_entered(message: Message, state: FSMContext):
 async def confirm_request(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
-    rid = add_request(callback.from_user.id, data["category"], data["text"])
+    text = data.get("text") or ""
+    rid = add_request(callback.from_user.id, data["category"], text)
     _, num = get_request(rid)
 
     rec = get_user(callback.from_user.id)
@@ -135,18 +158,32 @@ async def confirm_request(callback: CallbackQuery, state: FSMContext):
                 f"👤 {full_name} (@{username})\n"
                 f"🏢 {department} | 💼 {position}\n\n"
                 f"📂 {data['category']}\n"
-                f"📝 {data['text']}"
+                f"📝 {text}"
             ),
             parse_mode="HTML"
         )
+        for mtype, file_id in data.get("media", []):
+            caption = f"📎 Медіа до заявки №{num}"
+            try:
+                if mtype == "photo":
+                    await callback.bot.send_photo(hr_id, file_id, caption=caption)
+                elif mtype == "document":
+                    await callback.bot.send_document(hr_id, file_id, caption=caption)
+                elif mtype == "video":
+                    await callback.bot.send_video(hr_id, file_id, caption=caption)
+                elif mtype == "voice":
+                    await callback.bot.send_voice(hr_id, file_id, caption=caption)
+            except Exception as e:
+                print("Error sending media:", e)
 
     await callback.message.delete()
     await callback.bot.send_message(
         callback.from_user.id,
-        f"✅ Дякую, ми отримали твій запит 💬 Твоя заявка під номером №{num}. HR вже отримав сповіщення. Статус можна перевірити в головному меню. Ми розглянемо її протягом 8 робочих годин.",
+        f"✅ Дякуємо, ми отримали твій запит 💬 Твоя заявка під номером №{num}. HR вже отримав сповіщення. Статус можна перевірити в головному меню. Ми розглянемо її протягом 8 робочих годин.",
         reply_markup=get_user_main_menu()
     )
     await state.clear()
+
 
 
 @user_router.callback_query(F.data == "edit_request")
@@ -256,6 +293,7 @@ async def user_history_prev(cb: CallbackQuery):
     await cb.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
 
 
+
 @user_router.message(F.text == "💬 Залишити анонімний відгук")
 async def anonymous_feedback(message: Message, state: FSMContext):
     await message.answer(
@@ -266,18 +304,28 @@ async def anonymous_feedback(message: Message, state: FSMContext):
 
 @user_router.message(FeedbackState.enter_text)
 async def feedback_text_entered(message: Message, state: FSMContext):
-    txt = message.text.strip()
+
+    txt = (message.text or message.caption or "").strip()
+
+    if not txt and not (message.photo or message.document or message.video or message.voice):
+        await message.answer("⚠️ Будь ласка, напиши текст або прикріпи медіа.")
+        return
+
     await state.update_data(fb_text=txt)
+
     kb = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="✅ Відправити", callback_data="send_feedback"),
         InlineKeyboardButton(text="✏️ Редагувати", callback_data="edit_feedback"),
         InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_feedback"),
     ]])
-    await message.answer(
-        f"📄 <b>Перевірте ваш анонімний відгук:</b>\n\n📝 {txt}",
-        parse_mode="HTML",
-        reply_markup=kb
-    )
+
+    preview = f"📄 <b>Перевірте ваш анонімний відгук:</b>\n\n"
+    if txt:
+        preview += f"📝 {txt}"
+    if message.photo or message.document or message.video or message.voice:
+        preview += "\n\n📎 Додано медіа"
+
+    await message.answer(preview, parse_mode="HTML", reply_markup=kb)
 
 
 @user_router.callback_query(F.data == "send_feedback")
