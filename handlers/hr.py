@@ -183,12 +183,16 @@ async def _render_hr_history(bot, offset: int):
         if kind == "req":
             (_id, num, full, dept, pos, cat, txt,
              status, resp, created, updated, hr_name) = fields
-            user_id, _ = get_request(_id)
-            chat = await bot.get_chat(user_id)
-            username = chat.username or "—"
+            try:
+                user_id, _ = get_request(_id)
+                chat = await bot.get_chat(user_id)
+                username = chat.username or "—"
+            except Exception:
+                username = "-"
             symbol = "✅" if status == "Схвалено" else "❌" if status == "Відхилено" else ""
             parts.append(
                 f"📌 <b>Заявка №{num}</b>\n"
+                f"{symbol} <b>{status or "В обробці"}</b>\n"
                 f"👤 ПІБ: {full} (@{username})\n"
                 f"🏢 Відділ: {dept}\n"
                 f"💼 Посада: {pos}\n"
@@ -198,7 +202,7 @@ async def _render_hr_history(bot, offset: int):
                 f"🕒 Опрацьовано: {updated or '⏱️'}\n"
                 f"👥 HR: {hr_name or '⏳'}\n"
                 f"💬 Коментар: {resp or '—'}\n"
-                f"📊 Результат: {symbol}{status}"
+                #f"📊 Результат: {symbol}{status}"
             )
         else:
             fid, user_name, fb_text, fb_response, created_fb, responded_at, fb_hr = fields
@@ -208,10 +212,10 @@ async def _render_hr_history(bot, offset: int):
                 f"📅 Створено: {created_fb}\n"
                 f"🕒 Опрацьовано: {responded_at or '⏱️'}\n"
                 f"👥 HR: {fb_hr or '⏳'}\n"
-                f"💬 Відповідь HR: {fb_response or '—'}"
+                f"💬 Відповідь HR: {fb_response or 'Відсутня'}"
             )
 
-    text = "\n\n".join(parts)
+    text = "\n\n".join(parts) if parts else "-"
     total = len(items)
 
     buttons = []
