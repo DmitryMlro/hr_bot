@@ -7,14 +7,13 @@ from database import init_db
 from handlers.register import register_router
 from handlers.user import user_router
 from handlers.hr import hr_router
-from aiogram.client.bot import DefaultBotProperties
 
 
 async def main():
     init_db()
-
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
-    dp = Dispatcher(storage=MemoryStorage())
+    storage = MemoryStorage()
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher(storage=storage)
 
     dp.include_router(register_router)
     dp.include_router(hr_router)
